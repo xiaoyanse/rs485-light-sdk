@@ -35,6 +35,8 @@ fn main() -> Result<(), rs485_light_sdk::Error> {
 
 依赖方可以使用本地 Cargo path 或 Git 固定提交。通过 `Error::kind()` 可分类处理串口打开失败、超时、无效回显和未确认的复位。
 
+已有总线管理器的宿主可直接使用 `protocol::preset_frame`、`protocol::verify_echo` 和 `protocol::crc16`。这些纯协议函数不打开端口，对多站共享总线、网关封装和重试策略没有运行时依赖。Python 模块也导出同名函数，`preset_frame` 返回 `bytes`，回显不符时 `verify_echo` 抛出 `ValueError`。
+
 ## Python 3.11+
 
 Windows x64 可直接安装 [GitHub Release](https://github.com/xiaoyanse/rs485-light-sdk/releases) 中的 `cp311-abi3-win_amd64` wheel，无需编译。

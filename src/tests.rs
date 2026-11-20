@@ -18,7 +18,7 @@ fn station_accepts_factory_and_unicast_hex() {
 #[test]
 fn matches_capture_of_read_request_and_response() {
     assert_eq!(
-        frame(Station::FACTORY, 3, 0x00ff, 1),
+        frame(Station::FACTORY.value(), 3, 0x00ff, 1),
         [0xff, 0x03, 0x00, 0xff, 0x00, 0x01, 0xa1, 0xe4],
     );
     let mut captured = [0xff, 0x03, 0x02, 0x00, 0xff, 0xd1, 0xd0];
@@ -30,14 +30,24 @@ fn matches_capture_of_read_request_and_response() {
 
 #[test]
 fn rejects_valid_crc_echo_for_another_value() {
-    let request = frame(Station::FACTORY, 6, 0x00c2, 0x61);
-    let echoed = frame(Station::FACTORY, 6, 0x00c2, 0x0161);
+    let request = protocol::preset_frame(0xff, 0x61);
+    let echoed = frame(0xff, 6, 0x00c2, 0x0161);
     assert!(validate_crc(&echoed).is_ok());
     assert!(matches!(
         verify_echo(&request, &echoed),
         Err(Error::Response(_))
     ));
     assert!(verify_echo(&request, &request).is_ok());
+    assert_eq!(
+        protocol::verify_echo(&echoed, 0xff, 0x61),
+        Err(protocol::EchoMismatch::Value)
+    );
+    let mut padded = request.to_vec();
+    padded.push(0);
+    assert_eq!(
+        protocol::verify_echo(&padded, 0xff, 0x61),
+        Err(protocol::EchoMismatch::TooLong)
+    );
 }
 
 #[test]

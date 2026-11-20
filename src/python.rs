@@ -1,5 +1,9 @@
 use crate::{Error, Light};
-use pyo3::{exceptions::PyRuntimeError, prelude::*, types::PyModule};
+use pyo3::{
+    exceptions::{PyRuntimeError, PyValueError},
+    prelude::*,
+    types::{PyBytes, PyModule},
+};
 use std::{sync::Mutex, time::Duration};
 
 fn hardware_error(error: Error) -> PyErr {
@@ -91,9 +95,28 @@ fn hardware_error_open(error: serialport::Error) -> PyErr {
     PyRuntimeError::new_err(("enumeration_failed", error.to_string()))
 }
 
+#[pyfunction]
+fn crc16(data: &[u8]) -> u16 {
+    crate::protocol::crc16(data)
+}
+
+#[pyfunction]
+fn preset_frame(py: Python<'_>, station: u8, code: u8) -> Bound<'_, PyBytes> {
+    PyBytes::new(py, &crate::protocol::preset_frame(station, code))
+}
+
+#[pyfunction]
+fn verify_echo(echo: &[u8], station: u8, code: u8) -> PyResult<()> {
+    crate::protocol::verify_echo(echo, station, code)
+        .map_err(|error| PyValueError::new_err(error.description()))
+}
+
 #[pymodule]
 fn rs485_light_sdk(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_class::<PyLight>()?;
     module.add_function(wrap_pyfunction!(list_ports, module)?)?;
+    module.add_function(wrap_pyfunction!(crc16, module)?)?;
+    module.add_function(wrap_pyfunction!(preset_frame, module)?)?;
+    module.add_function(wrap_pyfunction!(verify_echo, module)?)?;
     Ok(())
 }

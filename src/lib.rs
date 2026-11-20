@@ -12,6 +12,7 @@ pub use serialport::{available_ports, SerialPortInfo, SerialPortType};
 
 #[cfg(feature = "c-api")]
 mod c_api;
+pub mod protocol;
 
 #[cfg(feature = "python")]
 mod python;
@@ -219,14 +220,14 @@ impl Light {
 
     /// Reads one word from register 00FF. The raw word is firmware-dependent.
     pub fn verify_connection(&mut self) -> Result<u16, Error> {
-        let request = frame(self.station, 0x03, 0x00ff, 1);
+        let request = frame(self.station.value(), 0x03, 0x00ff, 1);
         let response = self.exchange(&request, 7)?;
         station_word(&response)
     }
 
     /// Sends a persistent scene command and verifies its full echo.
     pub fn apply(&mut self, scene: Scene) -> Result<(), Error> {
-        let request = frame(self.station, 0x06, 0x00c2, u16::from(scene.command()));
+        let request = protocol::preset_frame(self.station.value(), scene.command());
         let response = self.exchange(&request, 8)?;
         verify_echo(&request, &response)
     }
@@ -307,30 +308,18 @@ fn preview_with(
     }
 }
 
-fn frame(station: Station, function: u8, register: u16, value: u16) -> [u8; 8] {
+fn frame(station: u8, function: u8, register: u16, value: u16) -> [u8; 8] {
     let [rh, rl] = register.to_be_bytes();
     let [vh, vl] = value.to_be_bytes();
-    let mut bytes = [station.value(), function, rh, rl, vh, vl, 0, 0];
-    let crc = crc16(&bytes[..6]);
+    let mut bytes = [station, function, rh, rl, vh, vl, 0, 0];
+    let crc = protocol::crc16(&bytes[..6]);
     bytes[6..].copy_from_slice(&crc.to_le_bytes());
     bytes
 }
 
-fn crc16(bytes: &[u8]) -> u16 {
-    bytes.iter().fold(0xffff, |crc, byte| {
-        (0..8).fold(crc ^ u16::from(*byte), |crc, _| {
-            if crc & 1 == 1 {
-                (crc >> 1) ^ 0xa001
-            } else {
-                crc >> 1
-            }
-        })
-    })
-}
-
 fn validate_crc(bytes: &[u8]) -> Result<(), Error> {
     let (body, crc) = bytes.split_at(bytes.len() - 2);
-    if crc16(body).to_le_bytes() != crc {
+    if protocol::crc16(body).to_le_bytes() != crc {
         return Err(Error::Response("CRC mismatch"));
     }
     Ok(())
@@ -345,10 +334,8 @@ fn station_word(response: &[u8]) -> Result<u16, Error> {
 }
 
 fn verify_echo(request: &[u8; 8], response: &[u8]) -> Result<(), Error> {
-    if response != request {
-        return Err(Error::Response("write echo did not match request"));
-    }
-    Ok(())
+    protocol::verify_echo(response, request[0], request[5])
+        .map_err(|error| Error::Response(error.description()))
 }
 
 #[cfg(test)]
