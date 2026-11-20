@@ -10,6 +10,9 @@ use std::{
 
 pub use serialport::{available_ports, SerialPortInfo, SerialPortType};
 
+#[cfg(feature = "c-api")]
+mod c_api;
+
 #[cfg(feature = "python")]
 mod python;
 

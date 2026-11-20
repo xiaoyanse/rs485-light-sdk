@@ -37,6 +37,8 @@ fn main() -> Result<(), rs485_light_sdk::Error> {
 
 ## Python 3.11+
 
+Windows x64 可直接安装 [GitHub Release](https://github.com/xiaoyanse/rs485-light-sdk/releases) 中的 `cp311-abi3-win_amd64` wheel，无需编译。
+
 从源码目录运行 `python -m pip install .` 生成并安装本机扩展，需要 Rust 工具链。
 
 ```python
@@ -50,6 +52,20 @@ try:
 finally:
     light.close()
 ```
+
+## Windows x64 DLL
+
+从 [GitHub Release](https://github.com/xiaoyanse/rs485-light-sdk/releases) 下载 DLL SDK 压缩包。内含 `rs485_light_sdk.dll`、MSVC 导入库和 C 头文件。C/C++ 链接导入库，把 DLL 放在应用程序旁。C# 或其他支持 C ABI 的语言可以按头文件声明直接加载 DLL。
+
+解压后可用 MSVC x64 开发者终端编译示例：
+
+```powershell
+cl /nologo /W4 /I include examples\c\light_check.c /link /LIBPATH:. rs485_light_sdk.lib
+.\light_check.exe COM3 FF
+.\light_check.exe COM3 FF green-steady
+```
+
+调用方应核对 `rs485_light_abi_version()`，串行使用同一个设备句柄，并通过 `rs485_light_close` 释放端口。场景名称与 CLI 相同。函数返回固定状态码，`rs485_light_status_message` 提供说明。需要自己构建 DLL 时，使用 `cargo build --release --locked --lib --features c-api`。
 
 ## 使用边界
 
