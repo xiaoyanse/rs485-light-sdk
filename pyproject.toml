@@ -1,0 +1,12 @@
+[build-system]
+requires = ["maturin>=1.8,<2"]
+build-backend = "maturin"
+
+[project]
+name = "rs485-light-sdk"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "RS485 signal light commissioning and control"
+
+[tool.maturin]
+features = ["python"]

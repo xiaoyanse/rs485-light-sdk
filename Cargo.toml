@@ -1,0 +1,22 @@
+[package]
+name = "rs485-light-sdk"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "RS485 Modbus RTU SDK and commissioning tool for C2-register signal lights"
+
+[features]
+python = ["dep:pyo3"]
+
+[dependencies]
+pyo3 = { version = "0.30.1", optional = true, features = ["abi3-py311", "extension-module"] }
+serialport = { version = "4.10.1", default-features = false }
+thiserror = "2"
+
+[lib]
+name = "rs485_light_sdk"
+crate-type = ["rlib", "cdylib"]
+
+[[bin]]
+name = "rs485-light"
+path = "src/main.rs"
